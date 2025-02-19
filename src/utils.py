@@ -213,6 +213,9 @@ class extract_face_features_haar():
 class extract_face_features():
     """
     Class to extract relevant face features.
+    
+    Licensing:
+    Licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode)
     """
     def __init__(self, device="cuda" if torch.cuda.is_available() else "cpu"):
         self.device = device
