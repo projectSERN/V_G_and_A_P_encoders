@@ -44,7 +44,7 @@ class ARNetPipeline:
     
     def detect_gaze(self, video_path):
         """
-        Detect eye gaze when left and right eyes are detected using OpenCV's Haarcascade.
+        Detect eye gaze when left and right eyes are detected using RT-Gene's landmark extractor.
         'gazeto2d' func found in utils.py
         
         Args:
