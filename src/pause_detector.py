@@ -88,6 +88,8 @@ class PauseDetector:
         # Extract audio
         video = VideoFileClip(filename=filepath)
         audio = video.audio
+        if audio is None:
+            return None
 
         # Get duration of audio and clip the audio
         duration = int(audio.duration)
@@ -207,6 +209,9 @@ class PauseDetector:
         """
         # Extract audio from the video
         audio_signal = self.__extract_audio(video_path, sampling_rate)
+        if audio_signal is None:
+            print("ERROR: No audio found with video")
+            return None, None, None
 
         # Envelope detection
         envelope = self.__envelope_detection(audio_signal, sampling_rate)
