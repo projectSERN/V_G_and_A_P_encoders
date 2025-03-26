@@ -8,7 +8,38 @@ import numpy as np
 
 from dataset import *
 
+def gaze_bins(gaze, width, device=torch.device("cuda" if torch.cuda.is_available() else "cpu")):
+    """
+    Section gaze into bins.
+    
+    Args:
+        gaze: numpy array of shape (batch_size, 2) representing the [yaw, pitch] angle
+        width: int representing bin width
+    Returns:
+        yaw_binned: numpy array of shape (batch_size,) representing the yaw bin
+        pitch_binned: numpy array of shape (batch_size,) representing the pitch bin
+    """
+    if isinstance(gaze, np.ndarray):
+        bins = np.arange(-90, 90, width)
+        gaze_binned = np.digitize(gaze, bins) - 1
+    else:
+        bins = torch.arange(-90, 90, width).to(device)
+        gaze_binned = torch.bucketize(gaze, bins) - 1
+        gaze_binned = gaze_binned.to(torch.float32)
+    
+    return gaze_binned
+
+
 def gazeto2d(gaze, rad=False):
+    """
+    Convert 3D gaze vector to 2D gaze (pitch, yaw) angles.
+    
+    Args:
+        gaze: torch tensor of shape (batch_size, 3) representing the 3D gaze vector
+        rad: boolean to convert angles to radians
+    Returns:
+        gaze_2d: numpy array of shape (batch_size, 2) representing the 2D gaze angles
+    """
     # Convert gaze vector to pitch and yaw angles
     yaw = torch.atan2(-gaze[:, 0], -gaze[:, 2])
     pitch = torch.asin(-gaze[:, 1])
