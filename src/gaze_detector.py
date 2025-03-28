@@ -3,8 +3,8 @@ import torch
 import numpy as np
 import torch.backends.cudnn as cudnn
 
-from models.ARNet import *
-from utils import *
+from models.ARNet import ARNet
+from src.feature_detector import extract_face_features
 
 class ARNetPipeline:
     def __init__(self, model_path, device='cuda' if torch.cuda.is_available() else 'cpu'):
@@ -18,7 +18,7 @@ class ARNetPipeline:
         """
         self.device = device
         self.model  = self.__load_model(model_path)
-        self.detector = extract_face_features()
+        self.detector = extract_face_features(device=self.device)
         
     def __load_model(self, model_path):
         """
@@ -41,7 +41,7 @@ class ARNetPipeline:
         model.eval()
         return model
     
-    def detect_gaze(self, left, right, degrees=False, frames=None):
+    def detect_gaze(self, left, right, frames=None):
         """
         Detect eye gaze when left and right eyes are detected using RT-Gene's landmark extractor.
         'gazeto2d' func found in utils.py
@@ -49,10 +49,9 @@ class ARNetPipeline:
         Args:
             left: list of left eye images
             right: list of right eye images
-            degrees: True if output is in degrees, False if in radians
             frames: list of video frames
         Returns:
-            numpy array of [yaw, pitch] gaze for each frame where eyes are detected
+            numpy array of [yaw, pitch] gaze for each frame where eyes are detected in radians
         """
         # Extract left, right eye images from video frames if provided
         if frames is not None:
@@ -65,10 +64,6 @@ class ARNetPipeline:
         # Detect gaze
         with torch.no_grad():
             gaze = self.model(left, right)
-            # Converts model output (3D vector) to [yaw, pitch] (2D angles)
-            if degrees:
-                gaze = gazeto2d(gaze)
-            else:
-                gaze = gaze.cpu().detach().numpy()
+            gaze = gaze.cpu().detach().numpy()
         
         return np.array(gaze)
