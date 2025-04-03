@@ -5,9 +5,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.init as init
 import numpy as np
-from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, confusion_matrix
-import seaborn as sns
-import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, roc_auc_score
     
 # DFD Models 
 class GazePause(nn.Module):
@@ -223,7 +221,7 @@ class Tester:
         self.criterion = criterion
         self.device = device
         
-    def test(self, plot_path):
+    def test(self):
         self.model.eval()
         iter_test = 0
         test_loss = 0
@@ -255,37 +253,7 @@ class Tester:
         all_preds_binary = (all_preds > 0.5).astype(int)  # Convert probabilities to binary predictions
         accuracy = accuracy_score(all_labels, all_preds_binary)
         roc_auc = roc_auc_score(all_labels, all_preds)
-        f1 = f1_score(all_labels, all_preds_binary)
-        real = 0
-        for i in range(len(all_labels)):
-            if all_labels[i] == 0:
-                real = i
-                break
         
-        print(all_labels[real], all_labels[-1])
-        print(all_preds[real], all_preds[-1])
-        print(all_preds_binary[real], all_preds_binary[-1])
-        
-        # Calculate and display confusion matrix
-        cm = confusion_matrix(all_labels, all_preds_binary)
-        plt.figure(figsize=(10, 7))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-        plt.xlabel('Predicted')
-        plt.ylabel('Actual')
-        plt.title('Confusion Matrix')
-        plt.savefig(os.path.join(plot_path, "ConfusionMatrix.png"), format='png')
-        plt.show()
-        
-        return avg_test_loss, accuracy, roc_auc, f1
-   
-if __name__ == '__main__':
-    model = PauseDFD()
-    features = {
-        "yaw_corr": torch.rand(1, 290),
-        "pitch_corr": torch.rand(1, 290),
-        "pauses": torch.rand(1, 290)
-    }
-    
-    pred, embedding = model(features['pauses'])
-    print(pred.shape, embedding.shape)
+        return avg_test_loss, accuracy, roc_auc
+
     
