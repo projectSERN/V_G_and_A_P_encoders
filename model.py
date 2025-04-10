@@ -52,15 +52,14 @@ class GazePause(nn.Module):
                 else:
                     init.kaiming_normal_(m.weight, nonlinearity='relu')
   
-    def forward(self, yaw, pitch):
-        gaze = torch.stack((yaw, pitch), 1)
-        gaze = self.conv1(gaze)
-        gaze = self.conv2(gaze)
-        gaze = self.conv3(gaze)
+    def forward(self, corr):
+        x = self.conv1(corr)
+        x = self.conv2(x)
+        x = self.conv3(x)
         
-        gaze = torch.flatten(gaze)
+        x = torch.flatten(x)
         
-        embedding = self.linear(gaze) # Output shape = 256
+        embedding = self.linear(x) # Output shape = 256
         
         pred = self.sigmoid(embedding)
         
@@ -71,13 +70,14 @@ class GazeDFD(nn.Module):
     """
     Linear model for DFD from [yaw, pitch] gaze
     """
-    def __init__(self):
+    def __init__(self, dropout=0.5):
         super(GazeDFD, self).__init__()
         
         # Embedding output   
         self.linear = nn.Sequential(
             nn.Linear(580, 255),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Dropout(p=dropout),
         )
         
         # Classifier head
@@ -93,14 +93,12 @@ class GazeDFD(nn.Module):
             else:
                 init.kaiming_normal_(m.weight, nonlinearity='relu')
 
-    def forward(self, yaw, pitch):
-        gaze = torch.concat((yaw, pitch), 1)
+    def forward(self,gaze):
         x = self.linear(gaze)
-        x = torch.flatten(x)
         
         pred = self.sigmoid(x)
         
-        embedding = torch.concat((x, pred))
+        embedding = torch.cat((x, pred), dim=1)
         
         return pred, embedding
 
@@ -109,12 +107,13 @@ class PauseDFD(nn.Module):
     """
     Linear model for DFD from tagged pauses.
     """
-    def __init__(self):
+    def __init__(self, dropout=0.5):
         super(PauseDFD, self).__init__()
         # Embedding output   
         self.linear = nn.Sequential(
             nn.Linear(290, 255),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Dropout(p=dropout)
         )
         
         # Classifier head
@@ -132,11 +131,10 @@ class PauseDFD(nn.Module):
 
     def forward(self, pauses):
         x = self.linear(pauses)
-        x = torch.flatten(x)
         
         pred = self.sigmoid(x)
         
-        embedding = torch.concat((x, pred))
+        embedding = torch.cat((x, pred), dim=1)
         
         return pred, embedding
     
@@ -151,21 +149,21 @@ class Trainer:
         self.scheduler = scheduler
         self.device = device
         
-    def train(self, epoch, num_epochs, batch_size):
+    def train(self):
         self.model.train()
         train_loss = 0
         iter_train = 0
         
-        for i, (yaw_corr, pitch_corr, label) in enumerate(self.train_loader):
-            yaw_corr = Variable(yaw_corr).cuda(self.device)
-            pitch_corr = Variable(pitch_corr).cuda(self.device)
+        for i, (data, label) in enumerate(self.train_loader):
+            data = Variable(data).to(self.device)
             
-            label = Variable(label).cuda(self.device).float().unsqueeze(1)
-            
+            label = Variable(label).to(self.device).float().unsqueeze(1)
+                        
             self.optimizer.zero_grad()
             
             # Predictions
-            pred = self.model(yaw_corr, pitch_corr).float()
+            pred, _ = self.model(data)
+            pred = pred.float()
             
             loss = self.criterion(pred, label)
             train_loss += loss.item()
@@ -195,14 +193,14 @@ class Validator:
         iter_val = 0
         
         with torch.no_grad():
-            for i, (yaw_corr, pitch_corr, label) in enumerate(self.val_loader):
-                yaw_corr = Variable(yaw_corr).cuda(self.device)
-                pitch_corr = Variable(pitch_corr).cuda(self.device)
+            for i, (data, label) in enumerate(self.val_loader):
+                data = Variable(data).to(self.device)
                 
-                label = Variable(label).cuda(self.device).float().unsqueeze(1)
+                label = Variable(label).to(self.device).float().unsqueeze(1)
                 
                 # Predictions
-                pred = self.model(yaw_corr, pitch_corr).float()
+                pred, _ = self.model(data)
+                pred = pred.float()
                 
                 loss = self.criterion(pred, label)
                 
@@ -229,14 +227,14 @@ class Tester:
         all_preds = []
         
         with torch.no_grad():
-            for i, (yaw_corr, pitch_corr, label) in enumerate(self.test_loader):
-                yaw_corr = Variable(yaw_corr).cuda(self.device)
-                pitch_corr = Variable(pitch_corr).cuda(self.device)
+            for i, (data, label) in enumerate(self.test_loader):
+                data = Variable(data).to(self.device)
                 
-                label = Variable(label).cuda(self.device).float().unsqueeze(1)
+                label = Variable(label).to(self.device).float().unsqueeze(1)
                 
                 # Predictions
-                pred = self.model(yaw_corr, pitch_corr).float()
+                pred, _ = self.model(data)
+                pred = pred.float()
                 
                 loss = self.criterion(pred, label)
                 
