@@ -471,6 +471,9 @@ class extract_face_features():
         if len(subjects) > 1:
             print(f"ERROR: More than one subject detected - {len(subjects)}")
             return None, None, None
+        elif len(subjects) == 0:
+            print("ERROR: No subjects detected")
+            return None, None, None
         else:
             # Convert dictionary with single key to list
             subject_idx = list(subjects.keys())[0]

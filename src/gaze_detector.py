@@ -5,6 +5,7 @@ import torch.backends.cudnn as cudnn
 
 from models.ARNet import ARNet
 from src.feature_detector import extract_face_features
+from src.utils.shared_utils import gazeto2d
 
 class ARNetPipeline:
     def __init__(self, model_path, device='cuda' if torch.cuda.is_available() else 'cpu'):
@@ -44,7 +45,6 @@ class ARNetPipeline:
     def detect_gaze(self, left, right, frames=None):
         """
         Detect eye gaze when left and right eyes are detected using RT-Gene's landmark extractor.
-        'gazeto2d' func found in utils.py
         
         Args:
             left: list of left eye images
@@ -64,6 +64,6 @@ class ARNetPipeline:
         # Detect gaze
         with torch.no_grad():
             gaze = self.model(left, right)
-            gaze = gaze.cpu().detach().numpy()
+            gaze = gazeto2d(gaze)
         
         return np.array(gaze)
