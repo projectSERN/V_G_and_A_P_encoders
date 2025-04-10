@@ -7,7 +7,7 @@ from torchvision import transforms
 
 def select_frames(flags, fps):
     """
-    Select >=5s of continuous frames with detected eyes.
+    Select >=10s of continuous frames with detected eyes.
     If length of continuous frames with undetected eyes >1/fps seconds, seperate into two continuous frames
     
     Args:
@@ -46,7 +46,7 @@ def select_frames(flags, fps):
             if len(valid_frames[k]) > len(valid_frames[max_len_key]):
                 max_len_key = k
         
-        if len(valid_frames[max_len_key]) >= 5 * fps:
+        if len(valid_frames[max_len_key]) >= 10 * fps:
             return valid_frames[max_len_key]
         else:
             return None
@@ -131,4 +131,24 @@ def normalized_cross_correlation(signal1, signal2):
     
     # Return correlation (avoiding division by zero)
     return corr / norm_factor if norm_factor != 0 else corr
+
+
+def gaze_bins(gaze, width):
+    """
+    Section gaze into bins.
+    
+    Args:
+        gaze: numpy array of shape (batch_size, 2) representing the [yaw, pitch] angle
+        width: int representing bin width
+    Returns:
+        yaw_binned: numpy array of shape (batch_size,) representing the yaw bin
+        pitch_binned: numpy array of shape (batch_size,) representing the pitch bin
+    """
+    bins = np.arange(-90, 90, width)
+    bin_index = np.digitize(gaze, bins) - 1
+    gaze_binned = np.zeros(len(bin_index))
+    for i in range(len(gaze_binned)):
+        gaze_binned[i] = bins[bin_index[i]]
+    
+    return gaze_binned
 
