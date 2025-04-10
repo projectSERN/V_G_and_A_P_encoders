@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 
-from src.utils import *
 
 class ARNet(nn.Module):
     def __init__(self, dropout=0.5):
