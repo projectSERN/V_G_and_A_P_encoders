@@ -12,7 +12,7 @@ class GazePause(nn.Module):
     """
     CNN model for DFD from gaze-pause correlations.
     """
-    def __init__(self):
+    def __init__(self,dropout=0.5):
         super(GazePause, self).__init__()
         # Convolutional Layers
         self.conv1 = nn.Sequential(
@@ -30,9 +30,21 @@ class GazePause(nn.Module):
             nn.BatchNorm1d(64),
             nn.ReLU()
         )
+        # self.conv4 = nn.Sequential(
+        #     nn.Conv1d(64,128, kernel_size=3, stride=2),
+        #     nn.BatchNorm1d(128),
+        #     nn.ReLU()
+        # )
+        
+        self.fc1 = nn.Sequential(
+            nn.Linear(64 * 23, 512),
+            nn.Dropout(p=dropout),
+            nn.ReLU()
+        )
         
         # Embedding output
-        self.linear = nn.Linear(64 * 23, 256)
+        # self.linear = nn.Linear(128 * 11, 256)
+        self.linear = nn.Linear(512, 256)
         
         # Classifier head
         self.sigmoid = nn.Sequential(
@@ -56,9 +68,10 @@ class GazePause(nn.Module):
         x = self.conv1(corr)
         x = self.conv2(x)
         x = self.conv3(x)
+        # x = self.conv4(x)
+        x = torch.flatten(x, 1)
         
-        x = torch.flatten(x)
-        
+        x = self.fc1(x)
         embedding = self.linear(x) # Output shape = 256
         
         pred = self.sigmoid(embedding)
@@ -72,13 +85,25 @@ class GazeDFD(nn.Module):
     """
     def __init__(self, dropout=0.5):
         super(GazeDFD, self).__init__()
+        # Convolutional Layers
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(2, 16, kernel_size=5, stride=3, padding=2),
+            nn.BatchNorm1d(16),
+            nn.ReLU()
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv1d(16,32, kernel_size=4, stride=2),
+            nn.BatchNorm1d(32),
+            nn.ReLU()
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv1d(32,64, kernel_size=3, stride=2),
+            nn.BatchNorm1d(64),
+            nn.ReLU()
+        )
         
         # Embedding output   
-        self.linear = nn.Sequential(
-            nn.Linear(580, 255),
-            nn.ReLU(),
-            nn.Dropout(p=dropout),
-        )
+        self.linear = nn.Linear(64 * 23, 255)
         
         # Classifier head
         self.sigmoid = nn.Sequential(
@@ -88,13 +113,20 @@ class GazeDFD(nn.Module):
     
     def init_weights(self):
         for m in self.modules():
-            if m.out_features == 1:
-                init.kaiming_normal_(m.weight, nonlinearity='sigmoid')
-            else:
-                init.kaiming_normal_(m.weight, nonlinearity='relu')
+            if isinstance(m, nn.Linear):
+                if m.out_features == 1:
+                    init.kaiming_normal_(m.weight, nonlinearity='sigmoid')
+                else:
+                    init.kaiming_normal_(m.weight, nonlinearity='relu')
 
     def forward(self,gaze):
-        x = self.linear(gaze)
+        x = self.conv1(gaze)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        
+        x = torch.flatten(x, 1)
+        
+        x = self.linear(x)
         
         pred = self.sigmoid(x)
         
@@ -191,6 +223,8 @@ class Validator:
         self.model.eval()
         val_loss = 0
         iter_val = 0
+        all_labels = []
+        all_preds = []
         
         with torch.no_grad():
             for i, (data, label) in enumerate(self.val_loader):
@@ -208,9 +242,18 @@ class Validator:
                 
                 iter_val += 1
                 
+                all_labels.extend(label.cpu().numpy())
+                all_preds.extend(pred.cpu().numpy())
+                
         avg_val_loss = val_loss / len(self.val_loader)
         
-        return avg_val_loss
+        # Calculate accuracy
+        all_labels = np.array(all_labels)
+        all_preds = np.array(all_preds)
+        all_preds_binary = (all_preds > 0.5).astype(int)  # Convert probabilities to binary predictions
+        accuracy = accuracy_score(all_labels, all_preds_binary)
+        
+        return avg_val_loss, accuracy
     
 class Tester:
     def __init__(self, model, test_loader, criterion, device):
@@ -254,4 +297,9 @@ class Tester:
         
         return avg_test_loss, accuracy, roc_auc
 
-    
+
+
+if __name__ == "__main__":
+    model = GazePause()
+    feature = torch.zeros((1, 2, 290))
+    model(feature)
