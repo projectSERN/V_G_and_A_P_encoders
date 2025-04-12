@@ -115,7 +115,7 @@ class DFDC_subset(Dataset):
             return None
 
         # Select frames with detected eyes (truncate to 290 frames)
-        selected_frames = select_frames(flags, fps)
+        selected_frames = select_frames(flags)
         if selected_frames is None:
             print("ERROR: No consistent detection of eyes")
             return None
@@ -134,6 +134,9 @@ class DFDC_subset(Dataset):
         gaze = self.gaze_detector.detect_gaze(selected_left, selected_right)
         # Detect pauses (truncate to 220500 samples)
         _, pauses, sr = self.pause_detector.detect_pauses(video_path)
+        if pauses is None:
+            print("ERROR: No audio found in the video")
+            return None
         pauses = pauses[:220500]
 
         # Downsample gaze to match fps of video (i.e. 29 fps)
@@ -172,17 +175,21 @@ class DFDC_subset(Dataset):
                 errors += 1
                 print(f"Errors so far: {errors}")
                 continue
+            elif len(data['yaw']) != 290:
+                errors += 1
+                print(f"Errors so far: {errors}")
+                continue
             
             split = video_info['split']
             print(f'Video: {video_info["video"]} Label: {label} Split: {split}')
             
             video_paths.append(video_info['video'])
             data_split.append(video_info['split'])
-            yaw.append(data['yaw'])
-            pitch.append(data['pitch'])
-            pauses.append(data['pauses'])
-            yaw_corr.append(data['gaze-pause'][0])
-            pitch_corr.append(data['gaze-pause'][1])
+            yaw.append(np.ravel(data['yaw']))
+            pitch.append(np.ravel(data['pitch']))
+            pauses.append(np.ravel(data['pauses']))
+            yaw_corr.append(np.ravel(data['gaze-pause'][0]))
+            pitch_corr.append(np.ravel(data['gaze-pause'][1]))
             num_label = 0 if 'REAL' in label else 1
             labels.append(num_label)
         
@@ -190,15 +197,15 @@ class DFDC_subset(Dataset):
         
         # Save numpy arrays to npy files
         save_path = f'/scratch/zceenaa/DFDC_subsets_preprocessed/subset_{self.subset}'
-        os.makedirs(save_path, exist_ok=True)        
-        np.save(os.path.join(save_path, 'video_paths.npy'), video_paths)
-        np.save(os.path.join(save_path, 'split.npy'), data_split)
-        np.save(os.path.join(save_path, 'yaw.npy'), yaw)
-        np.save(os.path.join(save_path, 'pitch.npy'), pitch)
-        np.save(os.path.join(save_path, 'pauses.npy'), pauses)
-        np.save(os.path.join(save_path, 'yaw_corr.npy'), yaw_corr)
-        np.save(os.path.join(save_path, 'pitch_corr.npy'), pitch_corr)
-        np.save(os.path.join(save_path, 'labels.npy'), labels)
+        os.makedirs(save_path, exist_ok=True)
+        np.save(os.path.join(save_path, 'video_paths.npy'), np.array(video_paths))
+        np.save(os.path.join(save_path, 'split.npy'), np.array(data_split))
+        np.save(os.path.join(save_path, 'yaw.npy'), np.array(yaw))
+        np.save(os.path.join(save_path, 'pitch.npy'), np.array(pitch))
+        np.save(os.path.join(save_path, 'pauses.npy'), np.array(pauses))
+        np.save(os.path.join(save_path, 'yaw_corr.npy'), np.array(yaw_corr))
+        np.save(os.path.join(save_path, 'pitch_corr.npy'), np.array(pitch_corr))
+        np.save(os.path.join(save_path, 'labels.npy'), np.array(labels))
 
 
 class DFDC_preprocessed(Dataset):
@@ -212,42 +219,39 @@ class DFDC_preprocessed(Dataset):
         
         Args:
             path: path to the specific subset of the preprocessed DFDC subset folder (str)
-            subset: subset number (str)
+            subset: subset number (list)
             split: select which split to load (str)
             feature: select which feature to load (i.e. gaze, pause or gaze-pause) (str)
             width: width of gaze bins (int)
         """
-        self.subset = subset
-        self.path = f'/scratch/zceenaa/DFDC_subsets_preprocessed/subset_{subset}/'
         self.data = {'feature': [], 'label': []}
+        for set in subset:
+            path = f'/scratch/zceenaa/DFDC_subsets_preprocessed/subset_{set}/'
         
-        # Reading npy files
-        splits = np.load(os.path.join(self.path, 'split.npy'))
-        yaw = np.load(os.path.join(self.path, 'yaw.npy'))
-        pitch = np.load(os.path.join(self.path, 'pitch.npy'))
-        pauses = np.load(os.path.join(self.path, 'pauses.npy'))
-        yaw_corr = np.load(os.path.join(self.path, 'yaw_corr.npy'))
-        pitch_corr = np.load(os.path.join(self.path, 'pitch_corr.npy'))
-        labels = np.load(os.path.join(self.path, 'labels.npy'))
-        
-        # Get correct split data
-        for i in range(len(splits)):
-            if splits[i] == split:
-                if feature == 'gaze':
-                    yaw_binned = gaze_bins(yaw[i], width)
-                    pitch_binned = gaze_bins(pitch[i], width)
-                    # gaze = np.ravel([yaw_binned, pitch_binned])
-                    gaze = np.ravel([[yaw_binned[i], pitch_binned[i]] for i in range(len(yaw_binned))])
-                    self.data['feature'].append(gaze)
-                elif feature == 'pause':
-                    self.data['feature'].append(pauses[i])
-                elif feature == 'gaze-pause':
-                    corr = np.ravel([[yaw_corr[i], pitch_corr[i]] for i in range(len(yaw_corr))])
-                    self.data['feature'].append(corr)
-                
-                self.data['label'].append(labels[i])
-
-
+            # Reading npy files
+            splits = np.load(os.path.join(path, 'split.npy'))
+            yaw = np.load(os.path.join(path, 'yaw.npy'))
+            pitch = np.load(os.path.join(path, 'pitch.npy'))
+            pauses = np.load(os.path.join(path, 'pauses.npy'))
+            yaw_corr = np.load(os.path.join(path, 'yaw_corr.npy'))
+            pitch_corr = np.load(os.path.join(path, 'pitch_corr.npy'))
+            labels = np.load(os.path.join(path, 'labels.npy'))
+            
+            # Get correct split data
+            for i in range(len(splits)):
+                if splits[i] == split:
+                    if feature == 'gaze':
+                        yaw_binned = np.ravel(gaze_bins(yaw[i], width))
+                        pitch_binned = np.ravel(gaze_bins(pitch[i], width))
+                        gaze = np.array([yaw_binned, pitch_binned])
+                        self.data['feature'].append(gaze)
+                    elif feature == 'pause':
+                        self.data['feature'].append(pauses[i])
+                    elif feature == 'gaze-pause':
+                        corr = np.array([yaw_corr[i], pitch_corr[i]])
+                        self.data['feature'].append(corr)
+                    
+                    self.data['label'].append(labels[i])
 
     def __len__(self):
         return len(self.data['feature'])
@@ -273,6 +277,9 @@ class DFDC_preprocessed(Dataset):
         return data, label
 
 if __name__ == "__main__":
-    # dataset = DFDC_subset(subset='06', device='cuda:1')
+    # dataset = DFDC_subset(subset='05', device='cuda:3')
     # dataset.save_preprocessed()
-    dataset2 = DFDC_preprocessed(subset='06', split='train', feature='gaze')
+    dataset2 = DFDC_preprocessed(subset=['05', '06', '07'], split='train', feature='gaze')
+    print(len(dataset2))
+    data, label = dataset2.__getitem__(0)
+    print(len(data[0]), label)
