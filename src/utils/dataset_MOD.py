@@ -5,9 +5,9 @@ import torch
 import numpy as np
 from torchvision import transforms
 
-def select_frames(flags, fps):
+def select_frames(flags):
     """
-    Select >=10s of continuous frames with detected eyes.
+    Select >=290 continuous frames with detected eyes.
     If length of continuous frames with undetected eyes >1/fps seconds, seperate into two continuous frames
     
     Args:
@@ -36,7 +36,7 @@ def select_frames(flags, fps):
             invalid_frames.append(frame_idx)
                 
     if counter == 0:
-        if len(valid_frames[0]) != 0:
+        if len(valid_frames[0]) != 0 and len(valid_frames[0]) >= 290:
             return valid_frames[0]
         else:
             return None
@@ -46,7 +46,7 @@ def select_frames(flags, fps):
             if len(valid_frames[k]) > len(valid_frames[max_len_key]):
                 max_len_key = k
         
-        if len(valid_frames[max_len_key]) >= 10 * fps:
+        if len(valid_frames[max_len_key]) >= 290:
             return valid_frames[max_len_key]
         else:
             return None
@@ -145,10 +145,7 @@ def gaze_bins(gaze, width):
         pitch_binned: numpy array of shape (batch_size,) representing the pitch bin
     """
     bins = np.arange(-90, 90, width)
-    bin_index = np.digitize(gaze, bins) - 1
-    gaze_binned = np.zeros(len(bin_index))
-    for i in range(len(gaze_binned)):
-        gaze_binned[i] = bins[bin_index[i]]
+    gaze_binned = np.digitize(gaze, bins) - 1
     
     return gaze_binned
 

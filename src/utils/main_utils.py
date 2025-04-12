@@ -55,7 +55,7 @@ def load_data(batch_size, subset='06', feature='gaze', width=10,
     return train_loader, val_loader, test_loader
 
 
-def early_stopping(avg_val_loss, best_val_loss, epochs_no_improve, epoch, model, output):
+def early_stopping(avg_val_loss, best_val_loss, epochs_no_improve, model, output='/scratch/zceenaa/DFD/'):
     """
     Early stopping algorithm.
     
