@@ -156,10 +156,11 @@ class PauseDFD(nn.Module):
     
     def init_weights(self):
         for m in self.modules():
-            if m.out_features == 1:
-                init.kaiming_normal_(m.weight, nonlinearity='sigmoid')
-            else:
-                init.kaiming_normal_(m.weight, nonlinearity='relu')
+            if isinstance(m, nn.Linear):
+                if m.out_features == 1:
+                    init.kaiming_normal_(m.weight, nonlinearity='sigmoid')
+                else:
+                    init.kaiming_normal_(m.weight, nonlinearity='relu')
 
     def forward(self, pauses):
         x = self.linear(pauses)
