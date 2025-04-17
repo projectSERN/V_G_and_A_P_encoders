@@ -12,39 +12,33 @@ class GazePause(nn.Module):
     """
     CNN model for DFD from gaze-pause correlations.
     """
-    def __init__(self,dropout=0.5):
+    def __init__(self, dropout=0.5):
         super(GazePause, self).__init__()
         # Convolutional Layers
         self.conv1 = nn.Sequential(
             nn.Conv1d(2, 16, kernel_size=5, stride=3, padding=2),
-            nn.BatchNorm1d(16),
+            # nn.BatchNorm1d(16),
             nn.ReLU()
         )
         self.conv2 = nn.Sequential(
             nn.Conv1d(16,32, kernel_size=4, stride=2),
-            nn.BatchNorm1d(32),
+            # nn.BatchNorm1d(32),
             nn.ReLU()
         )
         self.conv3 = nn.Sequential(
-            nn.Conv1d(32,64, kernel_size=3, stride=2),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(32,64, kernel_size=4, stride=2),
+            # nn.BatchNorm1d(64),
             nn.ReLU()
         )
-        # self.conv4 = nn.Sequential(
-        #     nn.Conv1d(64,128, kernel_size=3, stride=2),
-        #     nn.BatchNorm1d(128),
-        #     nn.ReLU()
-        # )
-        
-        self.fc1 = nn.Sequential(
-            nn.Linear(64 * 23, 512),
-            nn.Dropout(p=dropout),
+        self.conv4 = nn.Sequential(
+            nn.Conv1d(64,128, kernel_size=4, stride=2),
+            # nn.BatchNorm1d(128),
             nn.ReLU()
         )
         
         # Embedding output
-        # self.linear = nn.Linear(128 * 11, 256)
-        self.linear = nn.Linear(512, 256)
+        self.linear = nn.Linear(128 * 10, 256)
+        # self.linear = nn.Linear(64 * 22, 256)
         
         # Classifier head
         self.sigmoid = nn.Sequential(
@@ -68,10 +62,13 @@ class GazePause(nn.Module):
         x = self.conv1(corr)
         x = self.conv2(x)
         x = self.conv3(x)
-        # x = self.conv4(x)
+        x = self.conv4(x)
+        # x = self.conv5(x)
+        # x = self.conv6(x)
+        
         x = torch.flatten(x, 1)
         
-        x = self.fc1(x)
+        # x = self.fc1(x)
         embedding = self.linear(x) # Output shape = 256
         
         pred = self.sigmoid(embedding)
@@ -83,27 +80,28 @@ class GazeDFD(nn.Module):
     """
     Linear model for DFD from [yaw, pitch] gaze
     """
-    def __init__(self, dropout=0.5):
+    def __init__(self):
         super(GazeDFD, self).__init__()
         # Convolutional Layers
         self.conv1 = nn.Sequential(
             nn.Conv1d(2, 16, kernel_size=5, stride=3, padding=2),
-            nn.BatchNorm1d(16),
             nn.ReLU()
         )
         self.conv2 = nn.Sequential(
             nn.Conv1d(16,32, kernel_size=4, stride=2),
-            nn.BatchNorm1d(32),
             nn.ReLU()
         )
         self.conv3 = nn.Sequential(
-            nn.Conv1d(32,64, kernel_size=3, stride=2),
-            nn.BatchNorm1d(64),
+            nn.Conv1d(32,64, kernel_size=4, stride=2),
+            nn.ReLU()
+        )
+        self.conv4 = nn.Sequential(
+            nn.Conv1d(64,128, kernel_size=4, stride=2),
             nn.ReLU()
         )
         
-        # Embedding output   
-        self.linear = nn.Linear(64 * 23, 255)
+        # Embedding output
+        self.linear = nn.Linear(128 * 10, 255)
         
         # Classifier head
         self.sigmoid = nn.Sequential(
@@ -123,6 +121,7 @@ class GazeDFD(nn.Module):
         x = self.conv1(gaze)
         x = self.conv2(x)
         x = self.conv3(x)
+        x = self.conv4(x)
         
         x = torch.flatten(x, 1)
         
@@ -156,11 +155,10 @@ class PauseDFD(nn.Module):
     
     def init_weights(self):
         for m in self.modules():
-            if isinstance(m, nn.Linear):
-                if m.out_features == 1:
-                    init.kaiming_normal_(m.weight, nonlinearity='sigmoid')
-                else:
-                    init.kaiming_normal_(m.weight, nonlinearity='relu')
+            if m.out_features == 1:
+                init.kaiming_normal_(m.weight, nonlinearity='sigmoid')
+            else:
+                init.kaiming_normal_(m.weight, nonlinearity='relu')
 
     def forward(self, pauses):
         x = self.linear(pauses)
