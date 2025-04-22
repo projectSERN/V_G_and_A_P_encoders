@@ -73,7 +73,7 @@ class ARNet(nn.Module):
          
         # AR-NET (both)
         arnet_lboth = self.arnetbase(left)
-        arnet_rboth = self.arnetbase(left)
+        arnet_rboth = self.arnetbase(right)
         
         arnet_both = torch.concat((arnet_lboth, arnet_rboth), 1)
         arnet_both = self.arnetdense(arnet_both)
