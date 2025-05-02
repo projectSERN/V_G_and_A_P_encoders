@@ -1,4 +1,5 @@
-**V_G_and_A_P_encoders**
+# V_G_and_A_P_encoders
 
-Gaze detector used modified ARNet model. Eye images extracted using same method from RT-Gene.
-Pause detection used deterministic algorithm (discrete wavelet transform)
+This repo contains:
+1. Modified AR-Net model for eye gaze esimtation, where eye images are extracted using the same method as RT-GENE.
+2. Deterministic algorithm of discrete wavelet transform for pause pattern analysis in speech.
