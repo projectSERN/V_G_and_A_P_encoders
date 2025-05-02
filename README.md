@@ -1,11 +1,4 @@
-**Deepfake Detection from Gaze, Pause and Gaze-Pause Correlation**
+**Deepfake Detection from Gaze and Pause Modalities**
 
 Gaze detector used modified ARNet model. Eye images extracted using same method from RT-Gene.
-
-_Ignore: playground.py (need to delete later)_
-
-## PauseDFD model parameters
-Uses `PauseDFD` model found [here](model.py) with the following paramter(s)
-| Parameter | Value |
-|-----------|-------|
-| Dropout   | 0.514 |
+Pause detection used deterministic algorithm (discrete wavelet transform)
